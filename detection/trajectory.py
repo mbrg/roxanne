@@ -44,4 +44,4 @@ def rotate_trajectory(trajectory, normal):
 
 def find_trajectory(positions, normal, fps):
     rot_pos = rotate_frame(positions, normal)
-    return trajectory_per_frame(rot_pos, fps)
+    return rotate_trajectory(_per_frame(rot_pos, fps), normal)
