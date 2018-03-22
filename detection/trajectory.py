@@ -21,15 +21,25 @@ def trajectory_per_frame(positions, fps):
     return trajectory
 
 
-def rotate_frame(positions, normal):
+def calculate_rotation(normal, reverse=False):
     phi = np.arccos(np.dot(normal, [0,1,0]))
-    rotation_matrix = np.array([[np.cos(phi),0,-np.sin(phi)],
-                                [0,1,0],
+    rotation_matrix = np.array([[np.cos(phi),0,-np.sin(phi)],[0,1,0],
                                 [np.sin(phi),0,np.cos(phi)]])
-    rotated_positions = np.asarray([[0, 0, 0], ])
-    for row in positions:
-        rotated_positions = np.r_[rotated_positions, np.matmul(rotation_matrix, row).reshape((1, 3))]
-    return rotated_positions[1:, :]
+    if reverse:
+        return np.linalg.inv(rotation_matrix)
+    else:
+        return rotation_matrix
+
+
+def rotate_frame(positions, normal):
+    rotation = calculate_rotation(normal, False)
+    return np.einsum('ij,kj',rotation,positions)
+
+
+def rotate_trajectory(trajectory, normal):
+    rotation = calculate_rotation(normal, True)
+    return np.einsum('ij,kj',rotation,trajectory)
+
 
 
 def find_trajectory(positions, normal, fps):
