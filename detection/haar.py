@@ -1,6 +1,8 @@
 import numpy as np
 import cv2
-from . import SOCCER, BASKETBALL
+from . import *
+from detection.projective import pixel_to_world, world_to_pixel
+from detection.locate_ball_2d import find_xyr
 
 
 # globals
@@ -28,45 +30,85 @@ def detect_circle(img):
     return x, y, r
 
 
-def frame(cap):
-    # capture image
-    ret, img = cap.read()
-    gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+def find_xyr(img, rec):
+    u = rec[2] / 2
+    v = rec[3] / 2
+    r = min([u, v])
+    return u, v, r
+
+
+def calc_dist(image_radius):
+    known_radius_cm = (SOCCER['min_radius_cm'] + SOCCER['max_radius_cm']) / 2
+    return (known_radius_cm * FOCAL_LENGTH) / image_radius
+
+
+def process_frame(img, draw_rec=False, draw_circ=False):
+    """
+    Pixel Coordinates - (u,v), depth
+    World Coordinates - X,Y,Z
+    """
+
+    # defaults
+    num_found = 0
+    euc_coors = []
 
     # detect soccer
+    gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
     soccers = soccer_cascade.detectMultiScale(gray, 1.3, 5)
-    has_soccer = False
 
-    for x, y, w, h in soccers:
-        has_soccer = True
+    for nw_x, nw_y, rec_w, rec_h in soccers:
+        num_found += 1
 
         # bound soccer with a rectangle
-        cv2.rectangle(img, (x, y), (x + w, y + h), (255, 0, 0), 2)
+        if draw_rec:
+            cv2.rectangle(img, (nw_x, nw_y), (nw_x + rec_w, nw_y + rec_h), (255, 0, 0), 2)
 
         # detect soccer boundary
-        soccer_boundary = gray[y:y + h, x:x + w]
-        origin_x, origin_y, radius = detect_circle(soccer_boundary)
+        soccer_crop = gray[nw_y: nw_y + rec_h, nw_x: nw_x + rec_w]
+        u, v, radius = find_xyr(soccer_crop, [nw_x, nw_y, rec_w, rec_h])
+        if draw_circ:
+            cv2.circle(img, (nw_x + int(u), nw_y + int(v)), int(radius), (255, 0, 0), 2)
+
+        # calculate distance
+        depth = calc_dist(radius)
+
+        # coordinates
+        euc_coors.append(pixel_to_world(u, v, depth))
+
+    return img, num_found, euc_coors
 
 
-
-    return img, has_soccer
-
-
-def video(ret_first_cap=False):
+def video(ret_first_cap=False, draw_rec=False, draw_circ=False):
 
     img_cache = None
+    locations = np.array([[0, 0, 0],])
 
     with VideoCap(0) as vidcap:
 
         while True:
             try:
-                img, has_soccer = frame(vidcap.cap)
-                cv2.imshow('img', img)
-                #cv2.waitKey(0)
+                # capture image
+                ret, img = vidcap.cap.read()
 
-                if ret_first_cap and has_soccer:
+                # process
+                img, num_found, euc_coors = process_frame(img, draw_rec, draw_circ)
+
+                # in case ball wasn't found, take last known coordinates
+                if num_found == 0:
+                    euc_coors = locations[-1, :]
+
+                # in case multiple balls were found, take the one closest to last known location
+                if num_found > 1:
+                    options = [np.linalg.norm(c - locations[-1, :]) for c in euc_coors]
+                    euc_coors = euc_coors[np.argmin(options)]
+
+                if ret_first_cap and num_found > 0:
                     img_cache = img
                     break
+
+                # plot
+                cv2.imshow('img', img)
+                _ = cv2.waitKey(30) & 0xff
 
             except KeyboardInterrupt:
                 break

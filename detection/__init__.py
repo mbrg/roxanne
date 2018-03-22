@@ -1,4 +1,4 @@
-from math import pi
+from math import pi, tan
 
 
 def circ_to_rad(c):
@@ -35,3 +35,5 @@ BASKETBALL = dict(
     min_radius_cm=circ_to_rad(74.9),
     max_radius_cm=circ_to_rad(78.0),
 )
+
+FOCAL_LENGTH = 1
