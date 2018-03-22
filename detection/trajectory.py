@@ -1,5 +1,6 @@
 import numpy as np
 
+
 def initial_velocity(positions, dt):
     return np.gradient(positions, dt, axis=0)
 
@@ -19,6 +20,7 @@ def trajectory_per_frame(positions, fps):
         trajectory[-1] = 0
     return np.reshape(trajectory, (int(np.floor(len(trajectory)/3)),3))
 
+
 def rotate_frame(positions, normal):
     phi = np.arccos(np.dot(normal, [0,1,0]))
     rotation_matrix = np.array([[np.cos(phi),0,-np.sin(phi)],
@@ -31,3 +33,8 @@ def rotate_frame(positions, normal):
         rotated_positions = np.append(rotated_positions, np.matmul(rotation_matrix, row))
     return np.reshape(rotated_positions,
      (int(np.floor(len(rotated_positions)/3)),3))
+
+
+def find_trajectory(positions, normal, fps):
+    rot_pos = rotate_frame(positions, normal)
+    return trajectory_per_frame(rot_pos, fps)
