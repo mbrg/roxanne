@@ -25,11 +25,6 @@ class VideoCap(object):
             cv2.destroyAllWindows()
 
 
-def detect_circle(img):
-    x, y, r = 1, 1, 1
-    return x, y, r
-
-
 def find_xyr(img, rec):
     u = rec[2] / 2
     v = rec[3] / 2
@@ -50,6 +45,7 @@ def process_frame(img, draw_rec=False, draw_circ=False):
 
     # defaults
     num_found = 0
+    pix_coors = []
     euc_coors = []
 
     # detect soccer
@@ -73,44 +69,59 @@ def process_frame(img, draw_rec=False, draw_circ=False):
         depth = calc_dist(radius)
 
         # coordinates
-        euc_coors.append(pixel_to_world(u, v, depth))
+        pix_coors.append(np.array([nw_x + u, nw_y + v, depth]))
+        euc_coors.append(pixel_to_world(nw_x + u, nw_y + v, depth))
 
-    return img, num_found, euc_coors
+    return img, num_found, pix_coors, euc_coors
 
 
-def video(ret_first_cap=False, draw_rec=False, draw_circ=False):
+def video(num_frames=1000000, ret_first_cap=False, draw_rec=False, draw_circ=False):
 
     img_cache = None
-    locations = np.array([[0, 0, 0],])
+    pix_cache = np.array([[0, 0, 0],])
+    euc_cache = np.array([[0, 0, 0], ])
 
     with VideoCap(0) as vidcap:
 
-        while True:
-            try:
+        try:
+            for i in range(num_frames):
                 # capture image
                 ret, img = vidcap.cap.read()
 
                 # process
-                img, num_found, euc_coors = process_frame(img, draw_rec, draw_circ)
+                img, num_found, pix_coors, euc_coors = process_frame(img, draw_rec, draw_circ)
 
                 # in case ball wasn't found, take last known coordinates
                 if num_found == 0:
-                    euc_coors = locations[-1, :]
+                    pix_coors = pix_cache[-1, :]
+                    euc_coors = euc_cache[-1, :]
+
+                if num_found == 1:
+                    pix_coors = pix_coors[0]
+                    euc_coors = euc_coors[0]
 
                 # in case multiple balls were found, take the one closest to last known location
                 if num_found > 1:
-                    options = [np.linalg.norm(c - locations[-1, :]) for c in euc_coors]
+                    options = [np.linalg.norm(c - pix_cache[-1, :]) for c in pix_coors]
+                    pix_coors = pix_coors[np.argmin(options)]
                     euc_coors = euc_coors[np.argmin(options)]
+
+                # save coordinates
+                pix_cache = np.r_[pix_cache, pix_coors.reshape((1,3))]
+                euc_cache = np.r_[euc_cache, euc_coors.reshape((1,3))]
 
                 if ret_first_cap and num_found > 0:
                     img_cache = img
                     break
 
                 # plot
+                for i in range(pix_cache.shape[0]):
+                    cv2.circle(img, (int(pix_cache[i,0]), int(pix_cache[i,1])), 1, (255, 0, 0), 2)
                 cv2.imshow('img', img)
-                _ = cv2.waitKey(30) & 0xff
+                k = cv2.waitKey(30) & 0xff
+                if k == 27: break
 
-            except KeyboardInterrupt:
-                break
+        except KeyboardInterrupt:
+            pass
 
-    return img_cache
+    return img_cache, pix_cache, euc_cache
