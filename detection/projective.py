@@ -1,17 +1,8 @@
-import numpy as np
 from . import *
+import numpy as np
 
 
-''' Calibrate Camera Transformations '''
-
-# camera intrinsic parameters
-focal = IMAGE_SIZE_X / (2 * tan(FOV * pi / 360))
-cu = IMAGE_SIZE_X / 2
-cv = IMAGE_SIZE_Y / 2
-
-K = np.array([[focal, 0, cu],
-              [0, focal, cv],
-              [0, 0, 1]])
+K = np.array(K)
 
 
 def pixel_to_world(u, v, d):
@@ -24,7 +15,7 @@ def pixel_to_world(u, v, d):
     pxl = np.array([u, v, 1])
 
     # world coordinates
-    wrld = (np.linalg.inv(K) * pxl) * d
+    wrld = np.dot(np.linalg.inv(K), pxl) * d
 
     return wrld
 

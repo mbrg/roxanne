@@ -1,6 +1,13 @@
 from math import pi, tan
 
 
+# override with calibration patameters
+FOCAL_LENGTH = 594
+K = [[594.4334774737334, 0.0, 337.6364060049361],
+     [0.0, 593.7218596974133, 245.377160690053],
+     [0.0, 0.0, 1.0]]
+
+
 def circ_to_rad(c):
     """
     circumference to radius
@@ -36,4 +43,3 @@ BASKETBALL = dict(
     max_radius_cm=circ_to_rad(78.0),
 )
 
-FOCAL_LENGTH = 1
