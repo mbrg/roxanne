@@ -12,10 +12,10 @@ def trajectory_per_frame(positions, fps):
     next_position = np.copy(positions[-1, :])
     trajectory = np.asarray([next_position, ])
     acceleration = np.array([0,-980,0])
-    while next_position[1] > epsilon:
+    while next_position[1] >= epsilon:
         next_position += v * dt
         v += acceleration * dt
-        trajectory = np.r_[trajectory, next_position]
+        trajectory = np.r_[trajectory, next_position.reshape((1, 3))]
     if trajectory[-1, 1] < 0:
         trajectory[-1, 1] = 0
     return trajectory

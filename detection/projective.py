@@ -12,25 +12,23 @@ def pixel_to_world(u, v, d):
     """
 
     # pixel homogeneous coordinates
-    pxl = np.array([u, v, 1])
+    pxl = np.array([u, v, d])
 
     # world coordinates
-    wrld = np.dot(np.linalg.inv(K), pxl) * d
+    wrld = np.dot(np.linalg.inv(K), pxl)
 
     return wrld
 
 
-def world_to_pixel(x, y, z, d):
+def world_to_pixel(wrld_coor, d):
     """
     Given World coordinates (x, y, z)
     Return pixel coordinates
     """
 
-    # world coordinates
-    wrld = np.array([x, y, z])
-
     # pixel homogeneous coordinates
-    pxl = K * (wrld / d)
+    pxl = np.matmul(K, wrld_coor.T).T
+    pxl = np.divide(pxl, pxl[:, 2] + EPS)
 
     return pxl
 
