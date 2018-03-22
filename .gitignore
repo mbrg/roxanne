@@ -102,3 +102,6 @@ ENV/
 
 # PyCharm
 .idea/
+
+# tmp project files
+detection/haarcascades/possible/*
