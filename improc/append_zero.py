@@ -2,7 +2,7 @@ import glob
 import os
 import shutil
 
-DIR = 'C:\\Users\\mbargury\\Downloads\\ezra\\'
+DIR = 'C:\\Users\\mbargury\\Downloads\\ezra\\output1\\'
 EXT = '.jpg'
 
 # locate in files
@@ -19,8 +19,8 @@ def intable(x):
 # append zeros where needed
 for f in files:
     num_ints = len([c for c in f if intable(c)])
-    if num_ints == 3:
-        new_f = '%s0%s' % (f[:-7], f[-7:])
+    if num_ints < 5:
+        new_f = '%s%s%s' % (f[:-(4 + num_ints - 1)], '00000'[:5-num_ints], f[-(4 + num_ints - 1):])
         shutil.move(f, new_f)
 
 print('DONE')
