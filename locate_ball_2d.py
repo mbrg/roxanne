@@ -1,6 +1,5 @@
 import numpy as np
 from scipy import signal
-import matplotlib.pyplot as plt
 
 def find_xyr(im):
     # main function. gets an R*C or R*C*3 image and returns a triple (x,y,r) or strongest circle
@@ -10,20 +9,17 @@ def find_xyr(im):
     ed3=maxpool(ed2)
     eds=[ed3,ed2]
     imsiz=min(ed3.shape)
-    rads=np.linspace(imsiz/5,imsiz/2,samples[0])
+    rads=np.linspace(imsiz/20,imsiz/2,samples[0])
     step=rads[1]-rads[0]
     for i,ed in enumerate(eds):
         #print('~~~phase~~~~')
         xyr=scan_xyr(ed,rads)
-        print(xyr[0],xyr[1],rads[xyr[2]])
         r=rads[xyr[2]]*2
         rads=np.linspace(r-step, r+step, samples[i+1])
-    return (4*xyr[0],4*xyr[1],2*r)
+    return (2*xyr[0],2*xyr[1],2*r)
         
 
 def scan_xyr(im,rlist):
-    plt.figure()
-    plt.imshow(im)
     L=len(rlist)
     xy=np.zeros((L,2))
     maxgr=np.zeros(L)
@@ -31,12 +27,9 @@ def scan_xyr(im,rlist):
         #print('make filter')
         filt=circle_filter(rlist[i])
         #print('convolute!',im.shape,rlist[i],filt.shape)
-        grade=signal.convolve2d(im,filt,mode='same')
-        xy[i]=np.unravel_index(grade.argmax(), grade.shape)
+        grade=signal.convolve2d(im,filt)
+        xy[i]=np.unravel_index(grade.argmax(), grade.shape)-(np.array(filt.shape)-3)/2
         maxgr[i]=np.max(grade)
-        for a in []:#im,filt,grade]:    
-            plt.figure()
-            plt.imshow(a)
     imax=maxgr.argmax()
     return (*xy[imax],imax)
     
@@ -64,7 +57,6 @@ def sinc(mat):
     return (1-.5*np.abs(mat))*(np.abs(mat)<4)
 
 def  circle_filter(rad):
-    #print(rad)
     r=int(rad+2)
     rng=np.arange(-r,r+1)
     x=np.tile(rng,(2*r+1,1))
@@ -78,7 +70,5 @@ def simulate(siz,x,y,r):
     a=np.linspace(0,6.3,500)
     circ=np.array([[x],[y]])+r*np.vstack([np.cos(a),np.sin(a)])+.5
     circ=circ.astype(int)
-    circ[0,circ[0,:]>=siz[0]]=0
-    circ[1,circ[1,:]>=siz[1]]=0
     im[circ[0],circ[1]]=1
     return im #+.2*np.random.rand(*siz)
