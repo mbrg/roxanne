@@ -234,7 +234,7 @@ def video(xyz_trans='naive', cam=0,
                             cv2.circle(img, (int(pix_traj[j,0]), int(pix_traj[j,1])), 1, (255, 0, 0), 2)
 
                 cv2.imshow('img', img)
-                cv2.imwrite('img%d.jpg' % i, img)
+                #cv2.imwrite('img%d.jpg' % i, img)
                 k = cv2.waitKey(30) & 0xff
                 if k == 27: break
 
