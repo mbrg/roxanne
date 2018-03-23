@@ -11,12 +11,12 @@ def trajectory_per_frame(positions, fps):
     v = initial_velocity(positions, dt)[1]
     next_position = np.copy(positions[-1, :])
     trajectory = np.asarray([next_position, ])
-    acceleration = np.array([0,-980,0])
-    while next_position[1] >= epsilon:
+    acceleration = np.array([0,980,0])
+    while next_position[1] <= epsilon:
         next_position += v * dt
         v += acceleration * dt
         trajectory = np.r_[trajectory, next_position.reshape((1, 3))]
-    if trajectory[-1, 1] < 0:
+    if trajectory[-1, 1] > 0:
         trajectory[-1, 1] = 0
     return trajectory
 
@@ -44,4 +44,4 @@ def rotate_trajectory(trajectory, normal):
 
 def find_trajectory(positions, normal, fps):
     rot_pos = rotate_frame(positions, normal)
-    return rotate_trajectory(_per_frame(rot_pos, fps), normal)
+    return rotate_trajectory(trajectory_per_frame(rot_pos, fps), normal)

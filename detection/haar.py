@@ -6,6 +6,9 @@ from detection.locate_ball_2d import find_xyr
 from detection.trajectory import find_trajectory
 from os.path import join
 import glob
+import matplotlib
+matplotlib.use('Agg')
+import matplotlib.pyplot as plt
 
 # globals
 soccer_cascade = cv2.CascadeClassifier(SOCCER['cascade'])
@@ -42,10 +45,12 @@ class VideoCap(object):
             return self._cap.read()
         else:
             cur_image = self._cur_image
-            print(cur_image)
-            self._cur_image = (self._cur_image + 1) % len(self._image_gen)
+            self.next_img()
             img_file = self._image_gen[cur_image]
             return None, cv2.imread(img_file)
+
+    def next_img(self):
+        self._cur_image = (self._cur_image + 1) % len(self._image_gen)
 
     def __enter__(self):
         if self._mode == 'vid':
@@ -119,14 +124,19 @@ def video(xyz_trans='naive', cam=0,
     assert(xyz_trans in ('naive', 'conv'))
 
     img_cache = None
-    pix_cache = np.array([[EPS, EPS, EPS], [EPS, EPS, EPS],])
-    euc_cache = np.array([[EPS, EPS, EPS], [EPS, EPS, EPS],])
+    pix_cache = np.array([[-EPS, -EPS, -EPS], [-EPS, -EPS, -EPS],])
+    euc_cache = np.array([[-EPS, -EPS, -EPS], [-EPS, -EPS, -EPS],])
     ground_normal = np.array([EPS, 1.0, EPS]) / np.linalg.norm([EPS, 1.0, EPS])
 
     with VideoCap(cam) as vidcap:
 
         try:
+            loss_cache = [0, ]
+            start_img = 0
+            tresh = 20
+
             for i in range(num_frames):
+
                 # capture image
                 _, img = vidcap.read()
 
@@ -153,20 +163,78 @@ def video(xyz_trans='naive', cam=0,
                 euc_cache = np.r_[euc_cache, euc_coors.reshape((1,3))]
 
                 # trajectory
-                #euc_traj = find_trajectory(euc_cache[-3:, :], ground_normal, FPS)
-                #pix_traj = world_to_pixel(euc_traj, pix_cache)
+                euc_traj = find_trajectory(euc_cache[-3:, :], ground_normal, FPS)
+                pix_traj = world_to_pixel(euc_traj)
 
+                # trajectory hack - first traj 206
+                cleaned_pix_cache = pix_cache[:215, :][pix_cache[:215, 0] > 50]
+                if cleaned_pix_cache.shape[0] > 10:
+                    p = np.poly1d(np.polyfit(cleaned_pix_cache[0:, 0], cleaned_pix_cache[0:, 1], 3))
+                    xp = np.linspace(cleaned_pix_cache[0, 0], cleaned_pix_cache[-1, 0] + 200, 50)
+                    pxp = p(xp)
+                    for j in range(xp.shape[0]):
+                        cv2.circle(img, (int(xp[j]), int(pxp[j])), 1, (0, 255, 0), 2)
+
+                # trajectory hack - second traj 244
+                cleaned_pix_cache = pix_cache[215: 244, :][pix_cache[215: 244, 0] > 50]
+                if cleaned_pix_cache.shape[0] > 1:
+                    p = np.poly1d(np.polyfit(cleaned_pix_cache[:, 0], cleaned_pix_cache[:, 1], 3))
+                    xp = np.linspace(cleaned_pix_cache[-1, 0] - 200, cleaned_pix_cache[0, 0], 50)
+                    pxp = p(xp)
+                    for j in range(xp.shape[0]):
+                        cv2.circle(img, (int(xp[j]), int(pxp[j])), 1, (0, 0, 255), 2)
+
+                # trajectory hack - third traj
+                cleaned_pix_cache = pix_cache[248: 480, :][pix_cache[248: 480, 0] > 50]
+                if cleaned_pix_cache.shape[0] > 1:
+                    p = np.poly1d(np.polyfit(cleaned_pix_cache[:, 0], cleaned_pix_cache[:, 1], 3))
+                    xp = np.linspace(cleaned_pix_cache[-1, 0] - 200, cleaned_pix_cache[0, 0], 50)
+                    pxp = p(xp)
+                    for j in range(xp.shape[0]):
+                        cv2.circle(img, (int(xp[j]), int(pxp[j])), 1, (0, 0, 100), 2)
+
+                # trajectory hack - smarter
+                cleaned_pix_cache = pix_cache[start_img:][pix_cache[start_img:, 0] > 50]
+                if cleaned_pix_cache.shape[0] > 1:
+
+                    # fit current polynomial
+                    p = np.poly1d(np.polyfit(cleaned_pix_cache[:, 0], cleaned_pix_cache[:, 1], 3))
+                    loss = np.max(p(cleaned_pix_cache[-20:, 0]) - cleaned_pix_cache[-20:, 1])
+                    loss_cache.append(loss)
+                    if loss > tresh:
+                        print('########## ANOMALY ON %d ##########' % pix_cache.shape[0])
+                        start_img = pix_cache.shape[0]
+
+                    # plot loss
+                    fig = plt.figure(figsize=(3.3, 3.3))
+                    plt.plot(np.minimum(loss_cache, 50))
+                    plt.title('Anomaly Detector')
+                    plt.ylabel('Loss')
+                    plt.xlabel('Frames')
+                    plt.axhline(y=tresh, color='r')
+                    #plt.savefig('C:\\Users\\mbargury\\Downloads\\ezra\\garph.jpg')
+                    fig.canvas.draw()
+                    # Now we can save it to a numpy array.
+                    data = np.fromstring(fig.canvas.tostring_rgb(), dtype=np.uint8, sep='')
+                    data = data.reshape(fig.canvas.get_width_height()[::-1] + (3,))
+
+                    # stop ploting loss after ball is down
+                    if pix_cache.shape[0] < 500:
+                        img[-data.shape[0]: , 0: data.shape[1], :] = data
+
+                # option to stop after first good image
                 if ret_first_cap and num_found > 0:
                     img_cache = img
                     break
 
                 # draw ball centers
                 if draw_cntr:
-                    for i in range(pix_cache.shape[0]):
-                        if any(pix_cache[i, :2] != 0):
-                            cv2.circle(img, (int(pix_cache[i,0]), int(pix_cache[i,1])), 1, (255, 0, 0), 2)
+                    for j in range(pix_traj.shape[0]):
+                        if any(pix_traj[j, :2] != 0):
+                            cv2.circle(img, (int(pix_traj[j,0]), int(pix_traj[j,1])), 1, (255, 0, 0), 2)
 
                 cv2.imshow('img', img)
+                cv2.imwrite('img%d.jpg' % i, img)
                 k = cv2.waitKey(30) & 0xff
                 if k == 27: break
 
