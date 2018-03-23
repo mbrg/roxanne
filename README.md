@@ -1,5 +1,8 @@
 # Roxanne
 
+### What and Why
+We’re stuck between living in the moment and capturing it, when our devices are smart enough to capture it for us. 
+Roxanne allows you to passively record events, intelligently saving you the exciting parts for later.
 
 ### Approach
 
