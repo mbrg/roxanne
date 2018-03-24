@@ -118,7 +118,7 @@ def process_frame(img, xyz_trans, draw_rec=False, draw_circ=False):
 
 
 def video(xyz_trans='naive', cam=0,
-          num_frames=1000000, ret_first_cap=False,
+          num_frames=1000000, ret_first_cap=False, save_frames=False,
           draw_rec=False, draw_circ=False, draw_cntr=False):
 
     assert(xyz_trans in ('naive', 'conv'))
@@ -167,7 +167,7 @@ def video(xyz_trans='naive', cam=0,
                 pix_traj = world_to_pixel(euc_traj)
 
                 # trajectory hack - first traj 206
-                cleaned_pix_cache = pix_cache[:215, :][pix_cache[:215, 0] > 50]
+                '''cleaned_pix_cache = pix_cache[:215, :][pix_cache[:215, 0] > 50]
                 if cleaned_pix_cache.shape[0] > 10:
                     p = np.poly1d(np.polyfit(cleaned_pix_cache[0:, 0], cleaned_pix_cache[0:, 1], 3))
                     xp = np.linspace(cleaned_pix_cache[0, 0], cleaned_pix_cache[-1, 0] + 200, 50)
@@ -220,7 +220,7 @@ def video(xyz_trans='naive', cam=0,
 
                     # stop ploting loss after ball is down
                     if pix_cache.shape[0] < 500:
-                        img[-data.shape[0]: , 0: data.shape[1], :] = data
+                        img[-data.shape[0]: , 0: data.shape[1], :] = data'''
 
                 # option to stop after first good image
                 if ret_first_cap and num_found > 0:
@@ -229,12 +229,12 @@ def video(xyz_trans='naive', cam=0,
 
                 # draw ball centers
                 if draw_cntr:
-                    for j in range(pix_traj.shape[0]):
-                        if any(pix_traj[j, :2] != 0):
-                            cv2.circle(img, (int(pix_traj[j,0]), int(pix_traj[j,1])), 1, (255, 0, 0), 2)
+                    for j in range(pix_cache.shape[0]):
+                        if any(pix_cache[j, :2] != 0):
+                            cv2.circle(img, (int(pix_cache[j,0]), int(pix_cache[j,1])), 1, (255, 0, 0), 2)
 
                 cv2.imshow('img', img)
-                #cv2.imwrite('img%d.jpg' % i, img)
+                if save_frames: cv2.imwrite('img%d.jpg' % i, img)
                 k = cv2.waitKey(30) & 0xff
                 if k == 27: break
 
